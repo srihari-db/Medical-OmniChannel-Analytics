@@ -1,0 +1,28 @@
+{
+  "display_name": "Medical Omnichannel Intelligence",
+  "description": "Natural-language exploration of Medical Affairs HCP 360, scientific engagement, unmet educational needs, and next-best scientific engagement. Grounded on governed Gold tables and metric views in _sa701.moe. All data is synthetic for demonstration.\n\nBuilt with Databricks AI Dev Kit",
+  "warehouse_id": "862f1d757f0424f7",
+  "table_identifiers": [
+    "_sa701.moe.gold_hcp_360",
+    "_sa701.moe.gold_hcp_priority",
+    "_sa701.moe.gold_medical_topic_interest",
+    "_sa701.moe.gold_msl_interaction_summary",
+    "_sa701.moe.gold_medical_information_requests",
+    "_sa701.moe.gold_congress_engagement",
+    "_sa701.moe.gold_territory_opportunity",
+    "_sa701.moe.gold_next_best_engagement",
+    "_sa701.moe.gold_hcp_channel_engagement"
+  ],
+  "sample_questions": [
+    "What are the most common unmet educational needs for oncology HCPs?",
+    "Show engagement by channel and territory.",
+    "Why is a given HCP considered a high-priority scientific follow-up?",
+    "Which HCPs attended a congress, requested a follow-up, and have not yet received one?",
+    "Compare scientific-interest trends between academic and community oncologists.",
+    "Which territories have high patient need but low Medical Affairs engagement?",
+    "Identify high-influence HCPs with growing interest in real-world evidence but limited recent MSL engagement.",
+    "Which HCPs have not been contacted by an MSL in the past 90 days?",
+    "Which scientific topics are increasing fastest?",
+    "How many priority oncology HCPs were engaged in the last 90 days?"
+  ]
+}

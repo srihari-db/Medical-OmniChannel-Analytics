@@ -1,0 +1,2548 @@
+{
+  "datasets": [
+    {
+      "name": "p1_kpis",
+      "displayName": "Executive KPIs",
+      "queryLines": [
+        "SELECT\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_hcp_360) AS total_hcps,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_hcp_360 WHERE hcp_tier IN ('Tier 1 - KOL','Tier 2 - High') AND days_since_last_msl <= 90) AS priority_engaged,\n",
+        "  (SELECT round(count(CASE WHEN days_since_last_msl <= 90 THEN 1 END)*1.0/count(*),3) FROM _sa701.moe.gold_hcp_360) AS reach_pct,\n",
+        "  (SELECT count(*) FROM _sa701.moe.msl_interactions WHERE interaction_date >= date_trunc('MONTH', current_date())) AS interactions_this_month,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_medical_information_requests) AS inquiries_received,\n",
+        "  (SELECT round(avg(response_time_days),1) FROM _sa701.moe.gold_medical_information_requests WHERE response_status='Closed') AS avg_response_days,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_medical_information_requests WHERE response_status='Open') AS open_inquiries,\n",
+        "  (SELECT sum(follow_ups_requested) FROM _sa701.moe.gold_hcp_360) AS open_followups,\n",
+        "  (SELECT count(distinct topic_category) FROM _sa701.moe.silver_msl_extracted) AS topics_identified,\n",
+        "  (SELECT count(distinct hcp_id) FROM _sa701.moe.gold_medical_topic_interest WHERE mentions_current_30d > mentions_prior_30d AND mentions_current_30d > 0) AS hcps_emerging_interest\n"
+      ]
+    },
+    {
+      "name": "p1_trend",
+      "displayName": "Engagement Trend",
+      "queryLines": [
+        "SELECT date_trunc('MONTH', interaction_date) AS month, count(*) AS interactions\n",
+        "FROM _sa701.moe.msl_interactions GROUP BY 1 ORDER BY 1\n"
+      ]
+    },
+    {
+      "name": "p1_reach",
+      "displayName": "Reach by Territory",
+      "queryLines": [
+        "SELECT territory, count(*) AS total_hcps,\n",
+        "  count(CASE WHEN days_since_last_msl <= 90 THEN 1 END) AS engaged_hcps,\n",
+        "  round(count(CASE WHEN days_since_last_msl <= 90 THEN 1 END)*1.0/count(*),2) AS reach_rate\n",
+        "FROM _sa701.moe.gold_hcp_360 GROUP BY territory ORDER BY total_hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p1_channel",
+      "displayName": "Channel Mix",
+      "queryLines": [
+        "SELECT channel, count(*) AS interactions FROM _sa701.moe.msl_interactions GROUP BY channel ORDER BY interactions DESC\n"
+      ]
+    },
+    {
+      "name": "p1_specialty",
+      "displayName": "Engagement by Specialty",
+      "queryLines": [
+        "SELECT specialty, count(*) AS hcps, round(avg(engagement_score),1) AS avg_engagement\n",
+        "FROM _sa701.moe.gold_hcp_360 GROUP BY specialty ORDER BY hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p1_topics",
+      "displayName": "Top Scientific Topics",
+      "queryLines": [
+        "SELECT topic_category, count(*) AS mentions FROM _sa701.moe.silver_msl_extracted GROUP BY topic_category ORDER BY mentions DESC\n"
+      ]
+    },
+    {
+      "name": "p2_kpis",
+      "displayName": "Engagement KPIs",
+      "queryLines": [
+        "SELECT\n",
+        "  round(avg(msl_interactions),1) AS avg_frequency,\n",
+        "  round(avg(days_since_last_msl),0) AS avg_recency_days,\n",
+        "  round(avg(avg_msl_duration_min),1) AS avg_duration,\n",
+        "  count(CASE WHEN channels_used >= 2 THEN 1 END) AS cross_channel_hcps,\n",
+        "  count(CASE WHEN under_engaged_priority THEN 1 END) AS under_engaged_priority\n",
+        "FROM _sa701.moe.gold_hcp_360\n"
+      ]
+    },
+    {
+      "name": "p2_segmentation",
+      "displayName": "HCP Segmentation",
+      "queryLines": [
+        "SELECT engagement_segment, count(*) AS hcps, round(avg(influence_score),0) AS avg_influence, round(avg(engagement_score),0) AS avg_engagement\n",
+        "FROM _sa701.moe.gold_hcp_priority GROUP BY engagement_segment ORDER BY hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p2_channelpref",
+      "displayName": "Channel Preference by Segment",
+      "queryLines": [
+        "SELECT engagement_segment, preferred_engagement_channel, count(*) AS hcps\n",
+        "FROM _sa701.moe.gold_hcp_priority p JOIN _sa701.moe.gold_hcp_360 h USING (hcp_id)\n",
+        "GROUP BY engagement_segment, preferred_engagement_channel ORDER BY hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p2_coverage",
+      "displayName": "Territory Coverage",
+      "queryLines": [
+        "SELECT territory, total_hcps, engaged_90d, reach_rate, under_engaged_priority_hcps\n",
+        "FROM _sa701.moe.gold_territory_opportunity ORDER BY total_hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p2_hcpdetail",
+      "displayName": "HCP Detail",
+      "queryLines": [
+        "SELECT hcp_name, specialty, territory, hcp_tier, influence_score, engagement_score, days_since_last_msl, top_scientific_topic\n",
+        "FROM _sa701.moe.gold_hcp_360 ORDER BY influence_score DESC LIMIT 60\n"
+      ]
+    },
+    {
+      "name": "p3_kpis",
+      "displayName": "Insights KPIs",
+      "queryLines": [
+        "SELECT\n",
+        "  (SELECT count(distinct topic_category) FROM _sa701.moe.silver_msl_extracted WHERE interaction_date >= date_add(current_date(),-30)) AS topics_this_month,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_medical_information_requests WHERE response_status='Open') AS unanswered_inquiries,\n",
+        "  (SELECT round(avg(response_time_days),1) FROM _sa701.moe.gold_medical_information_requests WHERE response_status='Closed') AS avg_fulfill_days,\n",
+        "  (SELECT count(*) FROM _sa701.moe.silver_msl_extracted WHERE competitor_mentioned IS NOT NULL AND competitor_mentioned <> 'None') AS competitor_mentions,\n",
+        "  (SELECT round(count(CASE WHEN sentiment='Positive' THEN 1 END)*1.0/count(*),3) FROM _sa701.moe.silver_msl_extracted) AS positive_sentiment_pct\n"
+      ]
+    },
+    {
+      "name": "p3_topictrend",
+      "displayName": "Topic Trend",
+      "queryLines": [
+        "SELECT date_trunc('MONTH', interaction_date) AS month, topic_category, count(*) AS mentions\n",
+        "FROM _sa701.moe.silver_msl_extracted\n",
+        "WHERE topic_category IN ('Biomarker & Patient Selection','Safety / ILD Management','Sequencing & Combinations','Real-World Evidence','CNS / Brain Metastases')\n",
+        "GROUP BY 1,2 ORDER BY 1\n"
+      ]
+    },
+    {
+      "name": "p3_evidence",
+      "displayName": "Evidence Requested",
+      "queryLines": [
+        "SELECT CASE WHEN evidence_type_requested IN ('Real-world evidence','RWE') THEN 'Real-World Evidence'\n",
+        "            WHEN evidence_type_requested ILIKE '%safety%' THEN 'Safety'\n",
+        "            WHEN evidence_type_requested ILIKE '%efficacy%' THEN 'Efficacy'\n",
+        "            WHEN evidence_type_requested ILIKE '%dosing%' THEN 'Dosing'\n",
+        "            WHEN evidence_type_requested ILIKE '%selection%' OR evidence_type_requested ILIKE '%biomarker%' THEN 'Patient Selection'\n",
+        "            WHEN evidence_type_requested ILIKE '%long-term%' OR evidence_type_requested ILIKE '%outcome%' THEN 'Long-term Outcomes'\n",
+        "            WHEN evidence_type_requested ILIKE '%comparative%' OR evidence_type_requested ILIKE '%head-to-head%' THEN 'Comparative Evidence'\n",
+        "            WHEN evidence_type_requested ILIKE '%trial%' OR evidence_type_requested ILIKE '%publication%' THEN 'Clinical Data'\n",
+        "            ELSE 'Other' END AS evidence_type,\n",
+        "  count(*) AS requests\n",
+        "FROM _sa701.moe.silver_msl_extracted GROUP BY 1 ORDER BY requests DESC\n"
+      ]
+    },
+    {
+      "name": "p3_inquiry_ind",
+      "displayName": "Inquiry by Indication",
+      "queryLines": [
+        "SELECT indication, count(*) AS inquiries FROM _sa701.moe.gold_medical_information_requests GROUP BY 1 ORDER BY inquiries DESC\n"
+      ]
+    },
+    {
+      "name": "p3_emerging",
+      "displayName": "Emerging Topics",
+      "queryLines": [
+        "SELECT topic_category, sum(mentions_current_30d) AS current_30d, sum(mentions_prior_30d) AS prior_30d,\n",
+        "  sum(mentions_current_30d) - sum(mentions_prior_30d) AS growth\n",
+        "FROM _sa701.moe.gold_medical_topic_interest GROUP BY 1 ORDER BY growth DESC\n"
+      ]
+    },
+    {
+      "name": "p3_sentiment",
+      "displayName": "Sentiment",
+      "queryLines": [
+        "SELECT sentiment, count(*) AS interactions FROM _sa701.moe.silver_msl_extracted GROUP BY 1 ORDER BY interactions DESC\n"
+      ]
+    },
+    {
+      "name": "p4_kpis",
+      "displayName": "Planning KPIs",
+      "queryLines": [
+        "SELECT\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_next_best_engagement) AS recommended_followups,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_next_best_engagement WHERE overdue) AS overdue_followups,\n",
+        "  (SELECT count(distinct hcp_id) FROM _sa701.moe.gold_medical_topic_interest WHERE mentions_current_30d > mentions_prior_30d AND mentions_current_30d>0) AS hcps_new_signals,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_congress_engagement WHERE sessions_attended > 0) AS congress_followup_candidates,\n",
+        "  (SELECT count(*) FROM _sa701.moe.gold_hcp_priority WHERE under_engaged_priority) AS priority_coverage_gap\n"
+      ]
+    },
+    {
+      "name": "p4_channeldist",
+      "displayName": "Recommended Channel Distribution",
+      "queryLines": [
+        "SELECT coalesce(suggested_channel_topic,'Unspecified') AS suggested_channel, count(*) AS recs\n",
+        "FROM _sa701.moe.gold_next_best_engagement GROUP BY 1 ORDER BY recs DESC LIMIT 8\n"
+      ]
+    },
+    {
+      "name": "p4_prioritytier",
+      "displayName": "Priority Tier",
+      "queryLines": [
+        "SELECT priority_tier, count(*) AS hcps FROM _sa701.moe.gold_next_best_engagement GROUP BY 1 ORDER BY hcps DESC\n"
+      ]
+    },
+    {
+      "name": "p4_nbe",
+      "displayName": "Next Best Engagement",
+      "queryLines": [
+        "SELECT hcp_name, territory, priority_tier, msl_priority_score, trigger, suggested_engagement, topic, recommended_date, review_status\n",
+        "FROM _sa701.moe.gold_next_best_engagement ORDER BY msl_priority_score DESC LIMIT 40\n"
+      ]
+    },
+    {
+      "name": "p4_opportunity",
+      "displayName": "Territory Opportunity",
+      "queryLines": [
+        "SELECT territory, territory_opportunity_score, diagnosed_patients, reach_rate, avg_educational_need\n",
+        "FROM _sa701.moe.gold_territory_opportunity ORDER BY territory_opportunity_score DESC\n"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "exec_overview",
+      "displayName": "Executive Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "p1-title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Medical Affairs Executive Overview"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-sub",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Unified HCP 360 across MSL, medical inquiries, congress, and digital channels \u2014 synthetic demo data (oncology)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-total-hcps",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "total_hcps",
+                      "expression": "`total_hcps`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "total_hcps",
+                  "displayName": "Total HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total HCPs"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-priority",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "priority_engaged",
+                      "expression": "`priority_engaged`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "priority_engaged",
+                  "displayName": "Priority HCPs Engaged (90d)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Priority HCPs Engaged (90d)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-reach",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "reach_pct",
+                      "expression": "`reach_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "reach_pct",
+                  "displayName": "HCP Reach %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCP Reach %"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-inter-month",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "interactions_this_month",
+                      "expression": "`interactions_this_month`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "interactions_this_month",
+                  "displayName": "Interactions This Month"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Interactions This Month"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-inq",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "inquiries_received",
+                      "expression": "`inquiries_received`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "inquiries_received",
+                  "displayName": "Medical Inquiries"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Medical Inquiries"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-resp",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_response_days",
+                      "expression": "`avg_response_days`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_response_days",
+                  "displayName": "Avg Response Days"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Response Days"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-open-fu",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "open_followups",
+                      "expression": "`open_followups`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "open_followups",
+                  "displayName": "Open Follow-ups"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Open Follow-ups"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-topics",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "topics_identified",
+                      "expression": "`topics_identified`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "topics_identified",
+                  "displayName": "Scientific Topics"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Scientific Topics"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 8,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-emerging",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_kpis",
+                  "fields": [
+                    {
+                      "name": "hcps_emerging_interest",
+                      "expression": "`hcps_emerging_interest`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "hcps_emerging_interest",
+                  "displayName": "HCPs w/ Emerging Interest"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCPs w/ Emerging Interest"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 8,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-h2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Engagement Trends & Reach"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-trend-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_trend",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month`)"
+                    },
+                    {
+                      "name": "interactions",
+                      "expression": "`interactions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "month",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Month"
+                },
+                "y": {
+                  "fieldName": "interactions",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Interactions"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Scientific Interactions by Month"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-reach-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_reach",
+                  "fields": [
+                    {
+                      "name": "territory",
+                      "expression": "`territory`"
+                    },
+                    {
+                      "name": "total_hcps",
+                      "expression": "`total_hcps`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "territory",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Territory"
+                },
+                "y": {
+                  "fieldName": "total_hcps",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCP Reach by Territory"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-channel-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_channel",
+                  "fields": [
+                    {
+                      "name": "channel",
+                      "expression": "`channel`"
+                    },
+                    {
+                      "name": "interactions",
+                      "expression": "`interactions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "interactions",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "interactions"
+                },
+                "color": {
+                  "fieldName": "channel",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "channel"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Channel Mix"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-specialty-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_specialty",
+                  "fields": [
+                    {
+                      "name": "specialty",
+                      "expression": "`specialty`"
+                    },
+                    {
+                      "name": "hcps",
+                      "expression": "`hcps`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "specialty",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Specialty"
+                },
+                "y": {
+                  "fieldName": "hcps",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Engagement by Specialty"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p1-topics-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p1_topics",
+                  "fields": [
+                    {
+                      "name": "topic_category",
+                      "expression": "`topic_category`"
+                    },
+                    {
+                      "name": "mentions",
+                      "expression": "`mentions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "y": {
+                  "fieldName": "topic_category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Topic"
+                },
+                "x": {
+                  "fieldName": "mentions",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Mentions"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top Scientific Topics"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 22,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "hcp_engagement",
+      "displayName": "HCP Scientific Engagement",
+      "layout": [
+        {
+          "widget": {
+            "name": "p2-title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## HCP Scientific Engagement"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-sub",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Segmentation by influence and engagement, channel preference, and territory coverage."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-freq",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_frequency",
+                      "expression": "`avg_frequency`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_frequency",
+                  "displayName": "Avg Interaction Frequency"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Interaction Frequency"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-recency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_recency_days",
+                      "expression": "`avg_recency_days`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_recency_days",
+                  "displayName": "Avg Recency (days)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Recency (days)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-duration",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_duration",
+                      "expression": "`avg_duration`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_duration",
+                  "displayName": "Avg Duration (min)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Duration (min)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-crosschan",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_kpis",
+                  "fields": [
+                    {
+                      "name": "cross_channel_hcps",
+                      "expression": "`cross_channel_hcps`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "cross_channel_hcps",
+                  "displayName": "Cross-Channel HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cross-Channel HCPs"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-undereng",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_kpis",
+                  "fields": [
+                    {
+                      "name": "under_engaged_priority",
+                      "expression": "`under_engaged_priority`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "under_engaged_priority",
+                  "displayName": "Under-engaged Priority HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Under-engaged Priority HCPs"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-note",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Segments combine influence score and engagement score into a 2x2 view."
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-h2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Segmentation & Coverage"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-seg-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_segmentation",
+                  "fields": [
+                    {
+                      "name": "engagement_segment",
+                      "expression": "`engagement_segment`"
+                    },
+                    {
+                      "name": "hcps",
+                      "expression": "`hcps`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "y": {
+                  "fieldName": "engagement_segment",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Segment"
+                },
+                "x": {
+                  "fieldName": "hcps",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "HCPs"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCP Segmentation Matrix (Influence x Engagement)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-channelpref-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_channelpref",
+                  "fields": [
+                    {
+                      "name": "engagement_segment",
+                      "expression": "`engagement_segment`"
+                    },
+                    {
+                      "name": "hcps",
+                      "expression": "`hcps`"
+                    },
+                    {
+                      "name": "preferred_engagement_channel",
+                      "expression": "`preferred_engagement_channel`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "engagement_segment",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Segment"
+                },
+                "y": {
+                  "fieldName": "hcps",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "HCPs"
+                },
+                "color": {
+                  "fieldName": "preferred_engagement_channel",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "preferred_engagement_channel"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Channel Preference by Segment"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-coverage-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_coverage",
+                  "fields": [
+                    {
+                      "name": "territory",
+                      "expression": "`territory`"
+                    },
+                    {
+                      "name": "reach_rate",
+                      "expression": "`reach_rate`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "territory",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Territory"
+                },
+                "y": {
+                  "fieldName": "reach_rate",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Reach Rate"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Territory-level Coverage (Reach Rate)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-h3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### HCP Detail (Top by Influence)"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p2-hcp-table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p2_hcpdetail",
+                  "fields": [
+                    {
+                      "name": "hcp_name",
+                      "expression": "`hcp_name`"
+                    },
+                    {
+                      "name": "specialty",
+                      "expression": "`specialty`"
+                    },
+                    {
+                      "name": "territory",
+                      "expression": "`territory`"
+                    },
+                    {
+                      "name": "hcp_tier",
+                      "expression": "`hcp_tier`"
+                    },
+                    {
+                      "name": "influence_score",
+                      "expression": "`influence_score`"
+                    },
+                    {
+                      "name": "engagement_score",
+                      "expression": "`engagement_score`"
+                    },
+                    {
+                      "name": "days_since_last_msl",
+                      "expression": "`days_since_last_msl`"
+                    },
+                    {
+                      "name": "top_scientific_topic",
+                      "expression": "`top_scientific_topic`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "hcp_name",
+                    "displayName": "HCP"
+                  },
+                  {
+                    "fieldName": "specialty",
+                    "displayName": "Specialty"
+                  },
+                  {
+                    "fieldName": "territory",
+                    "displayName": "Territory"
+                  },
+                  {
+                    "fieldName": "hcp_tier",
+                    "displayName": "Tier"
+                  },
+                  {
+                    "fieldName": "influence_score",
+                    "displayName": "Influence"
+                  },
+                  {
+                    "fieldName": "engagement_score",
+                    "displayName": "Engagement"
+                  },
+                  {
+                    "fieldName": "days_since_last_msl",
+                    "displayName": "Days Since MSL"
+                  },
+                  {
+                    "fieldName": "top_scientific_topic",
+                    "displayName": "Top Topic"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCP Engagement Detail"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 6,
+            "height": 7
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "scientific_insights",
+      "displayName": "Scientific Insights & Unmet Needs",
+      "layout": [
+        {
+          "widget": {
+            "name": "p3-title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Scientific Insights & Unmet Needs"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-sub",
+            "multilineTextboxSpec": {
+              "lines": [
+                "AI-extracted topics, evidence requests, emerging interests and sentiment from MSL notes and inquiries."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-topics-month",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_kpis",
+                  "fields": [
+                    {
+                      "name": "topics_this_month",
+                      "expression": "`topics_this_month`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "topics_this_month",
+                  "displayName": "Topics Detected (30d)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Topics Detected (30d)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-unanswered",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_kpis",
+                  "fields": [
+                    {
+                      "name": "unanswered_inquiries",
+                      "expression": "`unanswered_inquiries`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "unanswered_inquiries",
+                  "displayName": "Unanswered Inquiries"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Unanswered Inquiries"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-fulfill",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_kpis",
+                  "fields": [
+                    {
+                      "name": "avg_fulfill_days",
+                      "expression": "`avg_fulfill_days`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg_fulfill_days",
+                  "displayName": "Avg Fulfillment Days"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg Fulfillment Days"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-competitor",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_kpis",
+                  "fields": [
+                    {
+                      "name": "competitor_mentions",
+                      "expression": "`competitor_mentions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "competitor_mentions",
+                  "displayName": "Competitor Mentions"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Competitor Mentions"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-sentiment-kpi",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_kpis",
+                  "fields": [
+                    {
+                      "name": "positive_sentiment_pct",
+                      "expression": "`positive_sentiment_pct`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "positive_sentiment_pct",
+                  "displayName": "Positive Sentiment %"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Positive Sentiment %"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-note",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Topics and evidence needs are AI-extracted from unstructured MSL notes."
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-h2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Topic Trends & Evidence Gaps"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-topictrend-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_topictrend",
+                  "fields": [
+                    {
+                      "name": "month",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month`)"
+                    },
+                    {
+                      "name": "mentions",
+                      "expression": "`mentions`"
+                    },
+                    {
+                      "name": "topic_category",
+                      "expression": "`topic_category`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "month",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Month"
+                },
+                "y": {
+                  "fieldName": "mentions",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Mentions"
+                },
+                "color": {
+                  "fieldName": "topic_category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "topic_category"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Scientific Topic Trends Over Time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 6,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-evidence-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_evidence",
+                  "fields": [
+                    {
+                      "name": "evidence_type",
+                      "expression": "`evidence_type`"
+                    },
+                    {
+                      "name": "requests",
+                      "expression": "`requests`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "y": {
+                  "fieldName": "evidence_type",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Evidence Type"
+                },
+                "x": {
+                  "fieldName": "requests",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Requests"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Evidence Requested"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-emerging-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_emerging",
+                  "fields": [
+                    {
+                      "name": "topic_category",
+                      "expression": "`topic_category`"
+                    },
+                    {
+                      "name": "growth",
+                      "expression": "`growth`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "y": {
+                  "fieldName": "topic_category",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Topic"
+                },
+                "x": {
+                  "fieldName": "growth",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "30d Growth"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Emerging Topics (30d vs prior 30d)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 14,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-inquiry-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_inquiry_ind",
+                  "fields": [
+                    {
+                      "name": "indication",
+                      "expression": "`indication`"
+                    },
+                    {
+                      "name": "inquiries",
+                      "expression": "`inquiries`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "y": {
+                  "fieldName": "indication",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Indication"
+                },
+                "x": {
+                  "fieldName": "inquiries",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Inquiries"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Inquiry Volume by Indication"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p3-sentiment-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p3_sentiment",
+                  "fields": [
+                    {
+                      "name": "sentiment",
+                      "expression": "`sentiment`"
+                    },
+                    {
+                      "name": "interactions",
+                      "expression": "`interactions`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "interactions",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "interactions"
+                },
+                "color": {
+                  "fieldName": "sentiment",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "sentiment"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Sentiment Mix"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 19,
+            "width": 3,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "engagement_planning",
+      "displayName": "Engagement Planning",
+      "layout": [
+        {
+          "widget": {
+            "name": "p4-title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Next Best Scientific Engagement"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-sub",
+            "multilineTextboxSpec": {
+              "lines": [
+                "Evidence-based recommendations for MSL follow-up \u2014 for human review, based on approved scientific content and consent."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-recs",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_kpis",
+                  "fields": [
+                    {
+                      "name": "recommended_followups",
+                      "expression": "`recommended_followups`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "recommended_followups",
+                  "displayName": "HCPs Recommended"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCPs Recommended"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-overdue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_kpis",
+                  "fields": [
+                    {
+                      "name": "overdue_followups",
+                      "expression": "`overdue_followups`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "overdue_followups",
+                  "displayName": "Overdue Follow-ups"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Overdue Follow-ups"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-signals",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_kpis",
+                  "fields": [
+                    {
+                      "name": "hcps_new_signals",
+                      "expression": "`hcps_new_signals`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "hcps_new_signals",
+                  "displayName": "HCPs w/ New Signals"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HCPs w/ New Signals"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-congress",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_kpis",
+                  "fields": [
+                    {
+                      "name": "congress_followup_candidates",
+                      "expression": "`congress_followup_candidates`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "congress_followup_candidates",
+                  "displayName": "Congress Follow-up Candidates"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Congress Follow-up Candidates"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-gap",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_kpis",
+                  "fields": [
+                    {
+                      "name": "priority_coverage_gap",
+                      "expression": "`priority_coverage_gap`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "priority_coverage_gap",
+                  "displayName": "Priority Coverage Gap"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Priority Coverage Gap"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-note",
+            "multilineTextboxSpec": {
+              "lines": [
+                "All recommendations require MSL confirmation before action."
+              ]
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-h2",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Recommendation Mix & Territory Opportunity"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-channel-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_channeldist",
+                  "fields": [
+                    {
+                      "name": "suggested_channel",
+                      "expression": "`suggested_channel`"
+                    },
+                    {
+                      "name": "recs",
+                      "expression": "`recs`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "recs",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "recs"
+                },
+                "color": {
+                  "fieldName": "suggested_channel",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "suggested_channel"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Recommended Channel Distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-opportunity-chart",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_opportunity",
+                  "fields": [
+                    {
+                      "name": "territory",
+                      "expression": "`territory`"
+                    },
+                    {
+                      "name": "territory_opportunity_score",
+                      "expression": "`territory_opportunity_score`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "territory",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Territory"
+                },
+                "y": {
+                  "fieldName": "territory_opportunity_score",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Opportunity Score"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Territory Opportunity (Need vs Engagement)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-h3",
+            "multilineTextboxSpec": {
+              "lines": [
+                "### Recommended Actions (for MSL review)"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "p4-nbe-table",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "p4_nbe",
+                  "fields": [
+                    {
+                      "name": "hcp_name",
+                      "expression": "`hcp_name`"
+                    },
+                    {
+                      "name": "territory",
+                      "expression": "`territory`"
+                    },
+                    {
+                      "name": "priority_tier",
+                      "expression": "`priority_tier`"
+                    },
+                    {
+                      "name": "msl_priority_score",
+                      "expression": "`msl_priority_score`"
+                    },
+                    {
+                      "name": "trigger",
+                      "expression": "`trigger`"
+                    },
+                    {
+                      "name": "suggested_engagement",
+                      "expression": "`suggested_engagement`"
+                    },
+                    {
+                      "name": "topic",
+                      "expression": "`topic`"
+                    },
+                    {
+                      "name": "recommended_date",
+                      "expression": "`recommended_date`"
+                    },
+                    {
+                      "name": "review_status",
+                      "expression": "`review_status`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "hcp_name",
+                    "displayName": "HCP"
+                  },
+                  {
+                    "fieldName": "territory",
+                    "displayName": "Territory"
+                  },
+                  {
+                    "fieldName": "priority_tier",
+                    "displayName": "Priority"
+                  },
+                  {
+                    "fieldName": "msl_priority_score",
+                    "displayName": "Priority Score"
+                  },
+                  {
+                    "fieldName": "trigger",
+                    "displayName": "Trigger"
+                  },
+                  {
+                    "fieldName": "suggested_engagement",
+                    "displayName": "Suggested Engagement"
+                  },
+                  {
+                    "fieldName": "topic",
+                    "displayName": "Topic"
+                  },
+                  {
+                    "fieldName": "recommended_date",
+                    "displayName": "Recommended Date"
+                  },
+                  {
+                    "fieldName": "review_status",
+                    "displayName": "Review Status"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Next Best Scientific Engagement \u2014 Recommended Actions"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "canvasBackgroundColor": {
+        "light": "#FAFAFB",
+        "dark": "#1F272D"
+      },
+      "widgetBackgroundColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "widgetBorderColor": {
+        "light": "#FFFFFF",
+        "dark": "#11171C"
+      },
+      "fontColor": {
+        "light": "#000000",
+        "dark": "#E8ECF0"
+      },
+      "selectionColor": {
+        "light": "#2272B4",
+        "dark": "#8ACAFF"
+      },
+      "visualizationColors": [
+        "#077A9D",
+        "#FFAB00",
+        "#00A972",
+        "#FF3621",
+        "#8BCAE7",
+        "#AB4057",
+        "#99DDB4",
+        "#FCA4A1",
+        "#919191",
+        "#BF7080",
+        "#077A9D"
+      ],
+      "widgetHeaderAlignment": "CENTER"
+    }
+  }
+}
