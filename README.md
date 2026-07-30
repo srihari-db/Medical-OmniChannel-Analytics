@@ -24,7 +24,8 @@ AI output is a recommendation for **human (MSL) review**, not an automated actio
 ├── sql/                         # Unity Catalog data layer (reproducible DDL)
 │   ├── 00_schema_and_volume.sql #   schema + source_documents volume
 │   ├── 01_tables.sql            #   all source/silver/gold table schemas
-│   └── 02_metric_views.sql      #   governed metric views
+│   ├── 02_metric_views.sql      #   governed metric views
+│   └── 03_silver_msl_extraction.sql  # ai_query() logic: raw_notes -> structured silver
 ├── data/
 │   ├── genie/                   # Genie space definition (tables + sample questions)
 │   ├── dashboard/               # AI/BI dashboard (.lvdash.json)
@@ -50,8 +51,9 @@ AI output is a recommendation for **human (MSL) review**, not an automated actio
   `medical_inquiries`, `congress_events`, `digital_engagement`, `publications_trials`,
   `patient_claims_summary`.
 - **Silver** — `silver_msl_extracted`: structured fields (scientific topic, information
-  need, sentiment, follow-up, competitor mention…) extracted from MSL raw notes with
-  `ai_query()`.
+  need, sentiment, follow-up, competitor mention…) extracted from `msl_interactions.raw_notes`
+  with `ai_query()`. See **`sql/03_silver_msl_extraction.sql`** for the exact extraction +
+  `topic_category` bucketing logic (Llama 3.3 70B).
 - **Gold** — `gold_hcp_360`, `gold_hcp_priority`, `gold_medical_topic_interest`,
   `gold_msl_interaction_summary`, `gold_medical_information_requests`,
   `gold_congress_engagement`, `gold_territory_opportunity`, `gold_next_best_engagement`,
@@ -71,6 +73,7 @@ with your own generator, then the gold tables via the documented aggregation rul
 # 1. Data layer (run in order against a SQL warehouse)
 databricks sql ... < sql/00_schema_and_volume.sql
 databricks sql ... < sql/01_tables.sql
+databricks sql ... < sql/03_silver_msl_extraction.sql   # raw_notes -> silver_msl_extracted (ai_query)
 databricks sql ... < sql/02_metric_views.sql
 
 # 2. Genie space  — import data/genie/medical_omnichannel_intelligence.genie.json
