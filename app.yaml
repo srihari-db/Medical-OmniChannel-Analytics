@@ -1,0 +1,11 @@
+command: ["streamlit", "run", "app.py"]
+
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql_warehouse
+  - name: MOE_CATALOG
+    value: "_sa701"
+  - name: MOE_SCHEMA
+    value: "moe"
+  - name: MOE_LLM_ENDPOINT
+    value: "databricks-meta-llama-3-3-70b-instruct"
